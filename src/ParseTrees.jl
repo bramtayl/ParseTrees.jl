@@ -58,7 +58,7 @@ julia> result = parse_tree("hammurabi.txt.xml");
 julia> first(result).meta[1]
 (relationship = "root", text = "1")
 
-julia first(result).tree
+julia> first(result).tree
 {2, 1} directed simple Int64 graph
 ```
 """
