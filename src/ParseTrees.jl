@@ -108,6 +108,7 @@ function parse_clause(tree, meta, clause_types, clause_id)
     end
 end
 
+export separate_clauses
 """
     separate_clauses(sentence, clause_types)
 
