@@ -60,8 +60,6 @@ julia> first(result).meta[1]
 
 julia first(result).tree
 {2, 1} directed simple Int64 graph
-
-collect(result)
 ```
 """
 parse_tree(file) =
