@@ -1,0 +1,12 @@
+language: julia
+os:
+  - linux
+julia:
+  - 0.7
+  - 1.0
+  - nightly
+notifications:
+  email: false
+after_success:
+  - julia -e 'import ParseTrees, Pkg; Pkg.add("Coverage"); import Coverage.Codecov; ParseTrees |> pathof |> dirname |> Codecov.process_folder |> Codecov.submit'
+  - julia -e 'import ParseTrees, Pkg; Pkg.add("Documenter"); joinpath(ParseTrees |> pathof |> dirname |> dirname, "docs", "make.jl") |> include'
