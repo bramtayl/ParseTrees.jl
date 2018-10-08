@@ -41,6 +41,7 @@ function parse_sentence(sentence)
     (tree = tree, meta = meta)
 end
 
+export parse_tree
 """
     parse_tree(file)
 
