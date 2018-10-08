@@ -138,38 +138,32 @@ julia> result.rest
 function separate_clauses(sentence, clause_types)
     tree = sentence.tree
     meta = sentence.meta
-    roots = filter(word_id -> indegree(tree, word_id) == 0, 1:nv(tree))
-    if length(roots) == 1
-        root_id = first(roots)
-        clauses = collect(
-            # type assertion because we know it won't be nothing
-            NamedTuple{(:id, :clause_type, :text), Tuple{Int64, String, String}},
-            Filter(
-                clause -> clause !== nothing,
-                map(
-                    clause_id -> parse_clause(tree, meta, clause_types, clause_id),
-                    outneighbors(tree, root_id)
-                )
-        ))
-        clause_ids = map(clause -> clause.id, clauses)
-        rest = join(Generator(
-            word_id -> meta[word_id].text,
-            Filter(
-                word_id -> all(
-                    clause_id -> !has_path(tree, clause_id, word_id),
-                    clause_ids
-                ),
-                vertices(tree)
+    root_id = first(Filter(word_id -> indegree(tree, word_id) == 0, 1:nv(tree)))
+    clauses = collect(
+        # type assertion because we know it won't be nothing
+        NamedTuple{(:id, :clause_type, :text), Tuple{Int64, String, String}},
+        Filter(
+            clause -> clause !== nothing,
+            map(
+                clause_id -> parse_clause(tree, meta, clause_types, clause_id),
+                outneighbors(tree, root_id)
             )
-        ), " ")
-        (rest = rest, clauses = map(
-            clause -> (clause_type = clause.clause_type, text = clause.text),
-            clauses)
+    ))
+    clause_ids = map(clause -> clause.id, clauses)
+    rest = join(Generator(
+        word_id -> meta[word_id].text,
+        Filter(
+            word_id -> all(
+                clause_id -> !has_path(tree, clause_id, word_id),
+                clause_ids
+            ),
+            vertices(tree)
         )
-    else
-        warning("No single root cannot be found in $sentence")
-        missing
-    end
+    ), " ")
+    (rest = rest, clauses = map(
+        clause -> (clause_type = clause.clause_type, text = clause.text),
+        clauses)
+    )
 end
 
 end
