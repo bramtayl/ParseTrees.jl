@@ -169,7 +169,7 @@ julia> clauses_31.rest
 ", be put to death"
 ```
 """
-function clauses(meta, tree, clause_types)
+function clauses(tree, meta, clause_types)
     root_id = first(Filter(word_id -> indegree(tree, word_id) == 0, 1:nv(tree)))
     clauses = collect(
         # type assertion because we know it won't be nothing
