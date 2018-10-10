@@ -170,37 +170,37 @@ julia> clauses_31.rest
 """
 function clauses(tree, meta, clause_types)
     root_ids = filter(word_id -> indegree(tree, word_id) == 0, 1:nv(tree))
-    if length(root_ids != 1)
+    if length(root_ids) != 1
         @error "tree does not contain 1 and only 1 root"
     else
         root_id = first(root_ids)
-    end
-    clauses = collect(
-        # type assertion because we know it won't be nothing
-        NamedTuple{(:id, :clause_type, :text), Tuple{Int64, String, String}},
-        Filter(
-            clause -> clause !== nothing,
-            Generator(
-                clause_id -> parse_clause(tree, meta, clause_types, clause_id),
-                outneighbors(tree, root_id)
+        clauses = collect(
+            # type assertion because we know it won't be nothing
+            NamedTuple{(:id, :clause_type, :text), Tuple{Int64, String, String}},
+            Filter(
+                clause -> clause !== nothing,
+                Generator(
+                    clause_id -> parse_clause(tree, meta, clause_types, clause_id),
+                    outneighbors(tree, root_id)
+                )
             )
         )
-    )
-    clause_ids = map(clause -> clause.id, clauses)
-    rest = join(Generator(
-        word_id -> meta[word_id].text,
-        Filter(
-            word_id -> all(
-                clause_id -> !has_path(tree, clause_id, word_id),
-                clause_ids
-            ),
-            vertices(tree)
+        clause_ids = map(clause -> clause.id, clauses)
+        rest = join(Generator(
+            word_id -> meta[word_id].text,
+            Filter(
+                word_id -> all(
+                    clause_id -> !has_path(tree, clause_id, word_id),
+                    clause_ids
+                ),
+                vertices(tree)
+            )
+        ), " ")
+        (rest = rest, clauses = map(
+            clause -> (clause_type = clause.clause_type, text = clause.text),
+            clauses)
         )
-    ), " ")
-    (rest = rest, clauses = map(
-        clause -> (clause_type = clause.clause_type, text = clause.text),
-        clauses)
-    )
+    end
 end
 
 end
