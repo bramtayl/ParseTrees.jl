@@ -4,6 +4,68 @@ import Base.Iterators: Generator, Filter
 import LightXML: parse_file, root, name, child_elements, find_element, content, attribute, has_attribute
 import LightGraphs: DiGraph, add_edge!, nv, indegree, has_path, outneighbors, rem_edge!, vertices
 
+export sentences
+"""
+    sentences(file)
+
+Return an iterator over sentences.
+
+Input the XML results a run of `coreNLP` including at least the `tokenize` and
+`ssplit` annotators.
+
+```jldoctest
+julia> using ParseTrees
+
+julia> result = sentences("hammurabi.txt.xml");
+
+julia> typeof(first(result))
+LightXML.XMLElement
+```
+"""
+sentences(file) =
+    file |> parse_file |> root |>
+    (it -> find_element(it, "document")) |>
+    (it -> find_element(it, "sentences")) |> child_elements
+
+function parse_clause(tree, meta, clause_types, clause_id)
+    clause_type = meta[clause_id].relationship
+    if in(clause_type, clause_types)
+        (
+            id = clause_id,
+            clause_type = clause_type,
+            text = join(Generator(
+                word_id -> meta[word_id].text,
+                Filter(
+                    word_id -> has_path(tree, clause_id, word_id),
+                    1:nv(tree)
+                )
+            ), " ")
+        )
+    end
+end
+
+export annotate
+"""
+    annotate(file, annotators = ("tokenize", "ssplit", "parse"), options = ``)
+
+Return a command line call to `coreNLP` to be `run`.
+
+Must be `run` with the working directory set to the location where you have unzipped
+`coreNLP`. Will take a few minutes to complete.
+
+```{julia}
+julia> using ParseTrees
+
+julia> cd("C:/Users/hp/stanford-corenlp-full-2018-10-05")
+
+julia> annotate("hammurabi.txt")
+`java -cp '*' edu.stanford.nlp.pipeline.StanfordCoreNLP -annotators tokenize,ssplit,parse -file hammurabi.txt`
+```
+"""
+function annotate(file, annotators = ("tokenize", "ssplit", "parse"), options = ``)
+    `java -cp "*" edu.stanford.nlp.pipeline.StanfordCoreNLP -annotators $(join(annotators, ",")) -file $file $options`
+end
+
 get_id(node) = parse(Int, attribute(node, "idx"))
 
 function add_branch!(tree, word)
@@ -20,7 +82,45 @@ function add_branch!(tree, word)
     )
 end
 
-function parse_sentence(sentence, parse_type = "enhanced-plus-plus-dependencies")
+export dependencies
+"""
+    dependencies(sentence, format = "basic-dependencies")
+
+Return meta data about each token as well as a tree of how the tokens are connected.
+
+Input one of the [`sentences`](@ref) of a `coreNLP` run containing at least the
+`tokenize`, `ssplit`, and `parse` annotators.
+
+```jldoctest
+julia> using ParseTrees
+
+julia> depencies_31 = collect(sentences("hammurabi.txt.xml"))[31] |> dependencies;
+
+julia> depencies_31.meta
+17-element Array{NamedTuple{(:relationship, :text),Tuple{String,String}},1}:
+ (relationship = "mark", text = "If")
+ (relationship = "det", text = "any")
+ (relationship = "nsubj", text = "one")
+ (relationship = "advcl", text = "steal")
+ (relationship = "det", text = "the")
+ (relationship = "amod", text = "minor")
+ (relationship = "dobj", text = "son")
+ (relationship = "case", text = "of")
+ (relationship = "nmod", text = "another")
+ (relationship = "punct", text = ",")
+ (relationship = "nsubjpass", text = "he")
+ (relationship = "aux", text = "shall")
+ (relationship = "auxpass", text = "be")
+ (relationship = "root", text = "put")
+ (relationship = "case", text = "to")
+ (relationship = "nmod", text = "death")
+ (relationship = "punct", text = ".")
+
+julia> depencies_31.tree
+{16, 15} directed simple Int64 graph
+```
+"""
+function dependencies(sentence, parse_type = "basic-dependencies")
     words =
         sentence |>
         child_elements |>
@@ -42,75 +142,9 @@ function parse_sentence(sentence, parse_type = "enhanced-plus-plus-dependencies"
     (tree = tree, meta = map(word -> (relationship = word.relationship, text = word.text), meta))
 end
 
-export parse_tree
+export clauses
 """
-    parse_tree(file, format = "enhanced-plus-plus-dependencies")
-
-Process the results of the `coreNLP` parse annotator from an XML file.
-
-For each sentence, will return meta data about each word as well as a tree
-of how the words are connected.
-
-You can run coreNLP through the command line. A minimal command is
-`java -cp "*" edu.stanford.nlp.pipeline.StanfordCoreNLP -annotators tokenize,ssplit,parse -fileList FILE_LIST`
-from the folder where you unzipped coreNLP. The resulting files will be in the format
-`FILE.xml`, each of which you can parse with `parse_tree`.
-
-```jldoctest
-julia> using ParseTrees
-
-julia> result = parse_tree("hammurabi.txt.xml");
-
-julia> result[31].meta
-17-element Array{NamedTuple{(:relationship, :text),Tuple{String,String}},1}:
- (relationship = "mark", text = "If")
- (relationship = "det", text = "any")
- (relationship = "nsubj", text = "one")
- (relationship = "advcl:if", text = "steal")
- (relationship = "det", text = "the")
- (relationship = "amod", text = "minor")
- (relationship = "dobj", text = "son")
- (relationship = "case", text = "of")
- (relationship = "nmod:of", text = "another")
- (relationship = "punct", text = ",")
- (relationship = "nsubjpass", text = "he")
- (relationship = "aux", text = "shall")
- (relationship = "auxpass", text = "be")
- (relationship = "root", text = "put")
- (relationship = "case", text = "to")
- (relationship = "nmod:to", text = "death")
- (relationship = "punct", text = ".")
-
-julia> result[31].tree
-{16, 15} directed simple Int64 graph
-```
-"""
-parse_tree(file) =
-    file |> parse_file |> root |>
-    (it -> find_element(it, "document")) |>
-    (it -> find_element(it, "sentences")) |> child_elements |>
-    (it -> map(parse_sentence, it))
-
-function parse_clause(tree, meta, clause_types, clause_id)
-    clause_type = meta[clause_id].relationship
-    if in(clause_type, clause_types)
-        (
-            id = clause_id,
-            clause_type = clause_type,
-            text = join(Generator(
-                word_id -> meta[word_id].text,
-                Filter(
-                    word_id -> has_path(tree, clause_id, word_id),
-                    1:nv(tree)
-                )
-            ), " ")
-        )
-    end
-end
-
-export separate_clauses
-"""
-    separate_clauses(sentence, clause_types)
+    clauses(meta, tree, clause_types)
 
 Pull out root level clauses from a parsed sentence that are one of the
 `clause_types`.
@@ -118,26 +152,24 @@ Pull out root level clauses from a parsed sentence that are one of the
 ```jldoctest
 julia> using ParseTrees
 
-julia> sentence = parse_tree("hammurabi.txt.xml")[31];
+julia> depencies_31 = collect(sentences("hammurabi.txt.xml"))[31] |> dependencies;
 
-julia> result = separate_clauses(sentence, ("advcl:if", "nsubjpass", "aux"));
+julia> clauses_31 = clauses(depencies_31.meta, depencies_31.tree, ("advcl", "nsubjpass", "aux"));
 
-julia> result.clauses[1]
-(clause_type = "advcl:if", text = "If any one steal the minor son of another")
+julia> clauses_31.clauses[1]
+(clause_type = "advcl", text = "If any one steal the minor son of another")
 
-julia> result.clauses[2]
+julia> clauses_31.clauses[2]
 (clause_type = "nsubjpass", text = "he")
 
-julia> result.clauses[3]
+julia> clauses_31.clauses[3]
 (clause_type = "aux", text = "shall")
 
-julia> result.rest
+julia> clauses_31.rest
 ", be put to death"
 ```
 """
-function separate_clauses(sentence, clause_types)
-    tree = sentence.tree
-    meta = sentence.meta
+function clauses(meta, tree, clause_types)
     root_id = first(Filter(word_id -> indegree(tree, word_id) == 0, 1:nv(tree)))
     clauses = collect(
         # type assertion because we know it won't be nothing
