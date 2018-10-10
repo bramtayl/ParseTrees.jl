@@ -13,7 +13,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "ParseTrees.annotate",
     "category": "function",
-    "text": "annotate(file, annotators = (\"tokenize\", \"ssplit\", \"parse\"), options = ``)\n\nReturn a command line call to coreNLP to be run.\n\nMust be run with the working directory set to the location where you have unzipped coreNLP. Will take a few minutes to complete.\n\njulia> using ParseTrees\n\njulia> cd(\"C:/Users/hp/stanford-corenlp-full-2018-10-05\")\n\njulia> annotate(\"hammurabi.txt\")\n`java -cp \'*\' edu.stanford.nlp.pipeline.StanfordCoreNLP -annotators tokenize,ssplit,parse -file hammurabi.txt`\n\n\n\n\n\n"
+    "text": "annotate(file, annotators = (\"tokenize\", \"ssplit\", \"parse\"), options = ``)\n\nReturn a command line call to coreNLP to be run.\n\nMust be run with the working directory set to the location where you have unzipped coreNLP. Will take a few minutes to complete.\n\njulia> using ParseTrees\n\njulia> annotate(\"hammurabi.txt\")\n`java -cp \'*\' edu.stanford.nlp.pipeline.StanfordCoreNLP -annotators tokenize,ssplit,parse -file hammurabi.txt`\n\n\n\n\n\n"
 },
 
 {
