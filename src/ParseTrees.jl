@@ -50,13 +50,11 @@ export annotate
 
 Return a command line call to `coreNLP` to be `run`.
 
-Must be `run` with the working directory set to the location where you have unzipped
-`coreNLP`. Will take a few minutes to complete.
+Must be `run` with the working directory set to the location where you have
+unzipped `coreNLP`. Will take a few minutes to complete.
 
 ```{julia}
 julia> using ParseTrees
-
-julia> cd("C:/Users/hp/stanford-corenlp-full-2018-10-05")
 
 julia> annotate("hammurabi.txt")
 `java -cp '*' edu.stanford.nlp.pipeline.StanfordCoreNLP -annotators tokenize,ssplit,parse -file hammurabi.txt`
