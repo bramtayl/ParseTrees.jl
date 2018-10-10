@@ -110,7 +110,7 @@ function dependencies(sentence)
         child_elements |>
         (it -> Filter(
             node -> name(node) == "dependencies" &&
-                attribute(node, "type") == parse_type,
+                attribute(node, "type") == "basic-dependencies",
             it)) |>
         first |>
         child_elements |>
