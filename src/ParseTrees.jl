@@ -51,7 +51,7 @@ export annotate
 Return a command line call to `coreNLP` to be `run`.
 
 Must be `run` with the working directory set to the location where you have
-unzipped `coreNLP`. Will take a few minutes to complete.
+unzipped t `coreNLP`. Will take a few minutes to complete.
 
 ```{julia}
 julia> using ParseTrees
@@ -94,6 +94,9 @@ julia> using ParseTrees
 
 julia> depencies_31 = collect(sentences("hammurabi.txt.xml"))[31] |> dependencies;
 
+julia> depencies_31.tree
+{16, 15} directed simple Int64 graph
+
 julia> depencies_31.meta
 17-element Array{NamedTuple{(:relationship, :text),Tuple{String,String}},1}:
  (relationship = "mark", text = "If")
@@ -113,9 +116,6 @@ julia> depencies_31.meta
  (relationship = "case", text = "to")
  (relationship = "nmod", text = "death")
  (relationship = "punct", text = ".")
-
-julia> depencies_31.tree
-{16, 15} directed simple Int64 graph
 ```
 """
 function dependencies(sentence, parse_type = "basic-dependencies")
@@ -142,17 +142,19 @@ end
 
 export clauses
 """
-    clauses(meta, tree, clause_types)
+    clauses(tree, meta, clause_types)
 
-Pull out root level clauses from a parsed sentence that are one of the
-`clause_types`.
+Pull out root level clauses that are of `clause_types`.
+
+Input the the meta data and dependency tree that result from
+[`dependencies`](@ref).
 
 ```jldoctest
 julia> using ParseTrees
 
 julia> depencies_31 = collect(sentences("hammurabi.txt.xml"))[31] |> dependencies;
 
-julia> clauses_31 = clauses(depencies_31.meta, depencies_31.tree, ("advcl", "nsubjpass", "aux"));
+julia> clauses_31 = clauses(depencies_31.tree, depencies_31.meta, ("advcl", "nsubjpass", "aux"));
 
 julia> clauses_31.clauses[1]
 (clause_type = "advcl", text = "If any one steal the minor son of another")
