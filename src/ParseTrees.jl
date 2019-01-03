@@ -197,10 +197,10 @@ julia> length(result)
 julia> result[2]
 5-element Array{Pair{Symbol,String},1}:
  :Attribute => "his accuser"
- :Deontic => "shall"
- :aIm => "take"
+   :Deontic => "shall"
+       :aIm => "take"
  :Condition => "If any one bring an accusation against a man , and the accused go to the river and leap into the river , if he sink in the river"
- :Object => "possession of his house"
+    :Object => "possession of his house"
 ```
 """
 rules(document) = filter(is_rule, parse_sentence.(sentences(document)))
