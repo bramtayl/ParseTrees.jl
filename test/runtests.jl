@@ -1,4 +1,4 @@
-import Main.ParseTrees
+import ParseTrees
 using Documenter: makedocs, deploydocs
 
 makedocs(
