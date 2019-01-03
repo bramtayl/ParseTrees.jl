@@ -91,7 +91,7 @@ function clauses(dependency, clause_types)
     meta = dependency.meta
     root_ids = filter(word_id -> indegree(tree, word_id) == 0, 1:nv(tree))
     if length(root_ids) != 1
-        @warn "The sentence \"$(reconstitute(meta))\" does not contain 1 and only 1 root"
+        @debug "The sentence \"$(reconstitute(meta))\" does not contain 1 and only 1 root"
         nothing
     else
         root_id = first(root_ids)
@@ -190,9 +190,6 @@ Find the institutional grammar components in a coreNLP result.
 julia> using ParseTrees
 
 julia> result = rules("hammurabi.txt.xml");
-┌ Warning: The sentence "-LSB- Here a portion of the text is missing , apparently comprising thirty-four paragraphs . -RSB-" does not contain 1 an
-d only 1 root
-[...]
 
 julia> length(result)
 234
