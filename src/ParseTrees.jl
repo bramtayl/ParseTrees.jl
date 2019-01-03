@@ -185,6 +185,8 @@ export rules
 Find the institutional grammar components in a coreNLP result.
 
 ```jldoctest
+julia> using ParseTrees
+
 julia> result = rules("hammurabi.txt.xml");
 
 julia> length(result)
