@@ -4,50 +4,19 @@ import Base.Iterators: Generator, Filter
 import LightXML: parse_file, root, name, child_elements, find_element, content, attribute, has_attribute
 import LightGraphs: DiGraph, add_edge!, nv, indegree, has_path, outneighbors, rem_edge!, vertices
 
-export annotate
-"""
-    annotate(file, annotators = ("tokenize", "ssplit", "parse"), options = ``)
-
-Return a command line call to `coreNLP` to be `run`.
-
-Must be `run` with the working directory set to the location where you have
-unzipped `coreNLP`. Will take a few minutes to complete, and the resulting
-file will be an XML file with the same name as the input.
-
-```{julia}
-julia> using ParseTrees
-
-julia> annotate("hammurabi.txt")
-`java -cp '*' edu.stanford.nlp.pipeline.StanfordCoreNLP -annotators tokenize,ssplit,parse -file hammurabi.txt`
-```
-"""
-function annotate(file, annotators = ("tokenize", "ssplit", "parse"), options = ``)
-    `java -cp "*" edu.stanford.nlp.pipeline.StanfordCoreNLP -annotators $(join(annotators, ",")) -file $file $options`
-end
-
 export sentences
 """
     sentences(file)
 
-Return an iterator over sentences.
+Return an iterator over sentences of an XML coreNLP result.
 
-Input the XML results of a run of an [`annotate`](@ref) command,
-including at least the `tokenize` and `ssplit` annotators.
-
-```jldoctest
-julia> using ParseTrees
-
-julia> result = sentences("hammurabi.txt.xml");
-
-julia> typeof(first(result))
-LightXML.XMLElement
-```
+You can run coreNLP through the command-line. This package only requires three
+annontators: tokenize, ssplit, and parse.
 """
 sentences(file) =
     file |> parse_file |> root |>
     (it -> find_element(it, "document")) |>
     (it -> find_element(it, "sentences")) |> child_elements
-
 
 get_id(node) = parse(Int, attribute(node, "idx"))
 
@@ -69,40 +38,8 @@ export dependencies
 """
     dependencies(sentence)
 
-Return meta data about each token as well as a tree of how the tokens are
+Return meta-data about each token as well as a tree of how the tokens are
 connected.
-
-Input one of the [`sentences`](@ref) of a `coreNLP` run containing at least the
-`tokenize`, `ssplit`, and `parse` annotators.
-
-```jldoctest
-julia> using ParseTrees
-
-julia> depencies_31 = collect(sentences("hammurabi.txt.xml"))[31] |> dependencies;
-
-julia> depencies_31.tree
-{16, 15} directed simple Int64 graph
-
-julia> depencies_31.meta
-17-element Array{NamedTuple{(:relationship, :text),Tuple{String,String}},1}:
- (relationship = "mark", text = "If")
- (relationship = "det", text = "any")
- (relationship = "nsubj", text = "one")
- (relationship = "advcl", text = "steal")
- (relationship = "det", text = "the")
- (relationship = "amod", text = "minor")
- (relationship = "dobj", text = "son")
- (relationship = "case", text = "of")
- (relationship = "nmod", text = "another")
- (relationship = "punct", text = ",")
- (relationship = "nsubjpass", text = "he")
- (relationship = "aux", text = "shall")
- (relationship = "auxpass", text = "be")
- (relationship = "root", text = "put")
- (relationship = "case", text = "to")
- (relationship = "nmod", text = "death")
- (relationship = "punct", text = ".")
-```
 """
 function dependencies(sentence)
     words =
@@ -142,36 +79,18 @@ end
 
 export clauses
 """
-    clauses(tree, meta, clause_types)
+    clauses(dependencies_result, clause_types)
 
-Pull out root level clauses that are of `clause_types`.
-
-Input the dependency tree and metadata that result from [`dependencies`](@ref).
-
-```jldoctest
-julia> using ParseTrees
-
-julia> depencies_31 = collect(sentences("hammurabi.txt.xml"))[31] |> dependencies;
-
-julia> clauses_31 = clauses(depencies_31.tree, depencies_31.meta, ("advcl", "nsubjpass", "aux"));
-
-julia> clauses_31.clauses[1]
-(clause_type = "advcl", text = "If any one steal the minor son of another")
-
-julia> clauses_31.clauses[2]
-(clause_type = "nsubjpass", text = "he")
-
-julia> clauses_31.clauses[3]
-(clause_type = "aux", text = "shall")
-
-julia> clauses_31.rest
-", be put to death"
-```
+Pull out root level clauses that are of `clause_types` from the result of
+[`dependencies`](@ref).
 """
-function clauses(tree, meta, clause_types)
+function clauses(dependency, clause_types)
+    tree = dependency.tree
+    meta = dependency.meta
     root_ids = filter(word_id -> indegree(tree, word_id) == 0, 1:nv(tree))
     if length(root_ids) != 1
-        @error "tree does not contain 1 and only 1 root"
+        @warn "tree $meta not contain 1 and only 1 root"
+        nothing
     else
         root_id = first(root_ids)
         clauses = collect(
@@ -202,5 +121,84 @@ function clauses(tree, meta, clause_types)
         )
     end
 end
+
+const relationships_coreNLP_to_institutional_grammar = Dict(
+    "nsubj" => :Attribute,
+    "nsubjpass" => :Attribute,
+    "csubj" => :Attribute,
+
+    "aux" => :Deontic,
+
+    "nmod" => :Condition,
+    "advmod" => :Condition,
+    "xcomp" => :Condition,
+    "ccomp" => :Condition,
+    "advcl" => :Condition,
+
+    "dobj" => :Object,
+    "dep" => :Object,
+
+    "punct" => :remove,
+    "cc" => :remove,
+    "conj" => :remove,
+    "dep" => :remove,
+    "parataxis" => :remove,
+)
+
+is_rule(components) = components !== nothing && any(
+    component ->
+        component.first == :Deontic &&
+        occursin(r"(should)|(will)|(shall)|(must)|(may)|(can)", component.second),
+    components
+)
+
+const ADICO_order = Dict(
+    :Attribute => 1,
+    :Deontic => 2,
+    :aIm => 3,
+    :Condition => 4,
+    :Object => 5
+)
+
+process_sentence(::Nothing) = nothing
+function process_sentence(parsed)
+    result = map(
+        clause -> relationships_coreNLP_to_institutional_grammar[clause.clause_type] => clause.text,
+        parsed.clauses
+    )
+    filter!(clause -> clause.first != :remove, result)
+    push!(result, :aIm => parsed.rest)
+    sort!(result, by = x -> ADICO_order[x.first])
+    result
+end
+
+parse_sentence(sentence) =
+    process_sentence(clauses(
+        dependencies(sentence),
+        keys(relationships_coreNLP_to_institutional_grammar)
+    ))
+
+export rules
+"""
+    rules(document)
+
+Find the institutional grammar components in a coreNLP result.
+
+```jldoctest
+julia> result = rules("hammurabi.txt.xml");
+
+julia> length(result)
+234
+
+julia> result[2]
+5-element Array{Pair{Symbol,String},1}:
+ :Attribute => "his accuser"
+ :Deontic => "shall"
+ :aIm => "take"
+ :Condition => "If any one bring an accusation against a man , and the accused go to the river and leap into the river , if he sink in the river"
+ :Object => "possession of his house"
+```
+"""
+rules(document) = filter(is_rule, parse_sentence.(sentences(document)))
 
 end

@@ -1,14 +1,12 @@
-using ParseTrees
+import Main.ParseTrees
+using Documenter: makedocs, deploydocs
 
-import Documenter
-Documenter.makedocs(
+makedocs(
     modules = [ParseTrees],
-    format = :html,
     sitename = "ParseTrees.jl",
-    root = joinpath(dirname(dirname(@__FILE__)), "docs"),
-    pages = Any["Home" => "index.md"],
-    strict = true,
-    linkcheck = true,
-    checkdocs = :exports,
-    authors = "Brandon Taylor"
+    strict = true
+)
+
+deploydocs(
+    repo = "github.com/bramtayl/ParseTrees.jl.git"
 )
