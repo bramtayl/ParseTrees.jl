@@ -11,10 +11,11 @@ export sentences
 """
     sentences(file)
 
-Return an iterator over sentences of an XML coreNLP result.
+Return an iterator over sentences of an `coreNLP` result XML file.
 
-You can run coreNLP through the command-line. This package only requires three
-annontators: tokenize, ssplit, and parse.
+You can run `coreNLP` through the [`command-line`](https://stanfordnlp.github.io/CoreNLP/cmdline.html).
+This package only uses the [`parse`](https://stanfordnlp.github.io/CoreNLP/parse.html)
+annotator.
 
 ```jldoctest
 julia> using ParseTrees
