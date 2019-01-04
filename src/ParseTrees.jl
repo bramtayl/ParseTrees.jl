@@ -22,7 +22,7 @@ julia> using ParseTrees
 julia> result = sentences("hammurabi.txt.xml");
 
 julia> result[2]
-{29, 28} undirected Int64 metagraph with Float64 weights defined by :weight (default weight 1.0)
+{29, 28} directed Int64 metagraph with Float64 weights defined by :weight (default weight 1.0)
 
 julia> flat(result[2])
 "If any one ensnare another , putting a ban upon him , but he can not prove it , then he that ensnared him shall be put to death"
