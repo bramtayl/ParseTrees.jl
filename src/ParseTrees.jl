@@ -1,8 +1,8 @@
 module ParseTrees
 
 import Base.Iterators: Generator, Filter
-import LightXML: parse_file, root, name, child_elements, find_element, content, attribute, has_attribute
-import LightGraphs: DiGraph, add_edge!, nv, indegree, has_path, outneighbors, rem_edge!, vertices
+import LightXML: parse_file, root, name, child_elements, find_element, content, attribute
+import LightGraphs: DiGraph, add_edge!, indegree, has_path, outneighbors, rem_edge!, vertices
 import MetaGraphs: MetaDiGraph, set_props!, get_prop
 
 get_id(node) = parse(Int, attribute(node, "idx"))
@@ -174,7 +174,6 @@ function seek_clauses!(result, sentence, clause_dict, root_id, rest)
         end
     end
     if is_rule
-        flat(sentence, root_id)
         push!(locations, root_id => :aIm)
         push!(result, map(
             location -> location.second => flat(sentence, location.first),
