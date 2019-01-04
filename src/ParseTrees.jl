@@ -100,7 +100,7 @@ universal dependencies, many are labelled as `:not_applicable`, meaning they
 will not occur in the root. Several are labelled `:not_sure`, meaning it could
 or could not be one of the 6 components of institutional grammar. Then there
 are the ABDICO components, less `Or else`, which can't be determined
-grammatically, and `aIm`, which will end up as `rest`. Sub-clauses are
+grammatically, and `aIm`, which will end up as `rest`. Rules inside rules are
 marked for `recur`sion, and superfluous clauses are marked for `remove`l.
 """
 institutional_grammar = Dict(
