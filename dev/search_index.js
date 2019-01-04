@@ -37,7 +37,7 @@ var documenterSearchIndex = {"docs": [
     "page": "ParseTrees.jl",
     "title": "ParseTrees.sentences",
     "category": "method",
-    "text": "sentences(file)\n\nReturn an iterator over sentences of an XML coreNLP result.\n\nYou can run coreNLP through the command-line. This package only requires three annontators: tokenize, ssplit, and parse.\n\njulia> using ParseTrees\n\njulia> result = sentences(\"hammurabi.txt.xml\");\n\njulia> result[2]\n{29, 28} directed Int64 metagraph with Float64 weights defined by :weight (default weight 1.0)\n\njulia> flat(result[2])\n\"If any one ensnare another , putting a ban upon him , but he can not prove it , then he that ensnared him shall be put to death\"\n\njulia> flat(result[2], 4)\n\"If any one ensnare another , putting a ban upon him\"\n\n\n\n\n\n"
+    "text": "sentences(file)\n\nReturn an iterator over sentences of an coreNLP result XML file.\n\nYou can run coreNLP through the command-line. This package only uses the parse annotator.\n\njulia> using ParseTrees\n\njulia> result = sentences(\"hammurabi.txt.xml\");\n\njulia> result[2]\n{29, 28} directed Int64 metagraph with Float64 weights defined by :weight (default weight 1.0)\n\njulia> flat(result[2])\n\"If any one ensnare another , putting a ban upon him , but he can not prove it , then he that ensnared him shall be put to death\"\n\njulia> flat(result[2], 4)\n\"If any one ensnare another , putting a ban upon him\"\n\n\n\n\n\n"
 },
 
 {
