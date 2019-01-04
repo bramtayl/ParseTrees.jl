@@ -82,7 +82,7 @@ Just add water
 
     flat(sentence, id)
 
-Just the parts of the sentence connected to `id`.
+Just the parts of the `sentence` connected to `id`.
 """
 flat(sentence) = flat_inner(sentence, vertices(sentence))
 flat(sentence, id) = flat_inner(sentence, Filter(
@@ -94,7 +94,13 @@ export flat
 """
     institutional_grammar
 
-A clause dict based on Elinor Ostrom's institutional grammar.
+A clause dict based on Elinor Ostrom's institutional grammar. Of the forty
+universal dependencies, many are labelled as `:not_applicable`, meaning they
+will not occur in the root. Several are labelled `:not_sure`, meaning it could
+or could not be one of the 6 components of institutional grammar. Then there
+are the ABDICO components, less `Or else`, which can't be determined
+grammatically, and `aIm`, which will end up as `rest`. Sub-clauses are
+marked for `recur`sion, and superfluous clauses are marked for `remove`l.
 """
 institutional_grammar = Dict(
     "acl" => :not_applicable, # adjectival clause
@@ -106,7 +112,7 @@ institutional_grammar = Dict(
     # "auxpass" => :aIm, # passive auxiliary
     "case" => :not_applicable, # case marking
     "cc" => :remove, # coordinating conjunction
-    "ccomp" => :Object, # clausal component
+    "ccomp" => :oBject, # clausal component
     # "compound" -> :aIm,
     "conjunct" => :recur, # conjunct
     # "cop" => :aIm, # copula
@@ -116,7 +122,7 @@ institutional_grammar = Dict(
     "det" => :not_applicable, # determiner
     "discourse" => :remove,
     "dislocated" => :not_sure,
-    "dobj" => :Object, # direct object
+    "dobj" => :oBject, # direct object
     # "expl" => :aIm, # expletive
     "foreign" => :not_sure, # foreign works
     # "goeswith" => :aIm, # goes with
@@ -136,7 +142,7 @@ institutional_grammar = Dict(
     "reparandum" => :not_sure, # overridden disfluency
     # root => :aIm,
     "vocative" => :remove,
-    "xcomp" => :Object, # open clausal component
+    "xcomp" => :oBject, # open clausal component
 )
 export institutional_grammar
 
@@ -177,29 +183,30 @@ function seek_clauses!(result, sentence, clause_dict, root_id, rest)
 end
 
 """
-    rules(file, clause_dict, rest = :rest)
+    rules(file, clause_dict; rest = :rest)
 
 Split the sentences of a `file` into groups of clauses based on `clause_dict`,
 starting at the root. Clause dict should be a map from [Universal Dependencies
 (v1)](http://universaldependencies.org/docsv1/u/dep/all.html) to clause
-categories. There are three reserved clause categories, `:recur`, `:remove`, and
-`rest`.
+categories. There are three reserved clause categories, `:recur` (which will
+look for a rule inside the rule), `:remove`, (which will ignore the clause), and
+`rest` (which will gobble up any uncategorized root-level clauses).
 
 ```jldoctest
 julia> using ParseTrees
 
-julia> result = rules("hammurabi.txt.xml", institutional_grammar, :aIm);
+julia> result = rules("hammurabi.txt.xml", institutional_grammar; rest = :aIm);
 
 julia> result[237]
 5-element Array{Pair{Symbol,String},1}:
  :Condition => "If any one hire a cart alone"
  :Attribute => "he"
    :Deontic => "shall"
-    :Object => "forty ka of corn per day"
+    :oBject => "forty ka of corn per day"
        :aIm => "pay"
 ```
 """
-function rules(file, clause_dict, rest = :rest)
+function rules(file, clause_dict; rest = :rest)
     result = Vector{Vector{Pair{Symbol, String}}}()
     foreach(
         sentence -> begin
