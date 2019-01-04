@@ -3,6 +3,9 @@ module ParseTrees
 import Base.Iterators: Generator, Filter
 import LightXML: parse_file, root, name, child_elements, find_element, content, attribute, has_attribute
 import LightGraphs: DiGraph, add_edge!, nv, indegree, has_path, outneighbors, rem_edge!, vertices
+import MetaGraphs: MetaDiGraph, set_props!, get_prop
+
+get_id(node) = parse(Int, attribute(node, "idx"))
 
 export sentences
 """
@@ -12,197 +15,206 @@ Return an iterator over sentences of an XML coreNLP result.
 
 You can run coreNLP through the command-line. This package only requires three
 annontators: tokenize, ssplit, and parse.
-"""
-sentences(file) =
-    file |> parse_file |> root |>
-    (it -> find_element(it, "document")) |>
-    (it -> find_element(it, "sentences")) |> child_elements
-
-get_id(node) = parse(Int, attribute(node, "idx"))
-
-function add_branch!(tree, word)
-    parent_id = get_id(find_element(word, "governor"))
-    child = find_element(word, "dependent")
-    id = get_id(child)
-    if parent_id != 0
-        add_edge!(tree, parent_id, id)
-    end
-    (
-        relationship = attribute(word, "type"),
-        text = content(child),
-        order = id
-    )
-end
-
-export dependencies
-"""
-    dependencies(sentence)
-
-Return meta-data about each token as well as a tree of how the tokens are
-connected.
-"""
-function dependencies(sentence)
-    words =
-        sentence |>
-        child_elements |>
-        (it -> Filter(
-            node -> name(node) == "dependencies" &&
-                attribute(node, "type") == "basic-dependencies",
-            it)) |>
-        first |>
-        child_elements |>
-        collect
-    tree = DiGraph(length(words) - 1)
-    meta = map(word -> add_branch!(tree, word), words)
-    sort!(meta, lt = (word1, word2) -> isless(word1.order, word2.order))
-    (tree = tree, meta = map(word -> (relationship = word.relationship, text = word.text), meta))
-end
-
-function parse_clause(tree, meta, clause_types, clause_id)
-    clause_type = meta[clause_id].relationship
-    if in(clause_type, clause_types)
-        (
-            id = clause_id,
-            clause_type = clause_type,
-            text = join(Generator(
-                word_id -> meta[word_id].text,
-                Filter(
-                    word_id -> has_path(tree, clause_id, word_id),
-                    1:nv(tree)
-                )
-            ), " ")
-        )
-    else
-        nothing
-    end
-end
-
-reconstitute(meta) = join(Generator(x -> x.text, meta), " ")
-
-export clauses
-"""
-    clauses(dependencies_result, clause_types)
-
-Pull out root level clauses that are of `clause_types` from the result of
-[`dependencies`](@ref).
-"""
-function clauses(dependency, clause_types)
-    tree = dependency.tree
-    meta = dependency.meta
-    root_ids = filter(word_id -> indegree(tree, word_id) == 0, 1:nv(tree))
-    if length(root_ids) != 1
-        @debug "The sentence \"$(reconstitute(meta))\" does not contain 1 and only 1 root"
-        nothing
-    else
-        root_id = first(root_ids)
-        clauses = collect(
-            # type assertion because we know it won't be nothing
-            NamedTuple{(:id, :clause_type, :text), Tuple{Int64, String, String}},
-            Filter(
-                clause -> clause !== nothing,
-                Generator(
-                    clause_id -> parse_clause(tree, meta, clause_types, clause_id),
-                    outneighbors(tree, root_id)
-                )
-            )
-        )
-        clause_ids = map(clause -> clause.id, clauses)
-        rest = join(Generator(
-            word_id -> meta[word_id].text,
-            Filter(
-                word_id -> all(
-                    clause_id -> !has_path(tree, clause_id, word_id),
-                    clause_ids
-                ),
-                vertices(tree)
-            )
-        ), " ")
-        (rest = rest, clauses = map(
-            clause -> (clause_type = clause.clause_type, text = clause.text),
-            clauses)
-        )
-    end
-end
-
-const relationships_coreNLP_to_institutional_grammar = Dict(
-    "nsubj" => :Attribute,
-    "nsubjpass" => :Attribute,
-    "csubj" => :Attribute,
-
-    "aux" => :Deontic,
-
-    "nmod" => :Condition,
-    "advmod" => :Condition,
-    "xcomp" => :Condition,
-    "ccomp" => :Condition,
-    "advcl" => :Condition,
-
-    "dobj" => :Object,
-    "dep" => :Object,
-
-    "punct" => :remove,
-    "cc" => :remove,
-    "conj" => :remove,
-    "dep" => :remove,
-    "parataxis" => :remove,
-)
-
-is_rule(components) = components !== nothing && any(
-    component ->
-        component.first == :Deontic &&
-        occursin(r"(should)|(will)|(shall)|(must)|(may)|(can)", component.second),
-    components
-)
-
-const ADICO_order = Dict(
-    :Attribute => 1,
-    :Deontic => 2,
-    :aIm => 3,
-    :Condition => 4,
-    :Object => 5
-)
-
-process_sentence(::Nothing) = nothing
-function process_sentence(parsed)
-    result = map(
-        clause -> relationships_coreNLP_to_institutional_grammar[clause.clause_type] => clause.text,
-        parsed.clauses
-    )
-    filter!(clause -> clause.first != :remove, result)
-    push!(result, :aIm => parsed.rest)
-    sort!(result, by = x -> ADICO_order[x.first])
-    result
-end
-
-parse_sentence(sentence) =
-    process_sentence(clauses(
-        dependencies(sentence),
-        keys(relationships_coreNLP_to_institutional_grammar)
-    ))
-
-export rules
-"""
-    rules(document)
-
-Find the institutional grammar components in a coreNLP result.
 
 ```jldoctest
 julia> using ParseTrees
 
-julia> result = rules("hammurabi.txt.xml");
-
-julia> length(result)
-234
+julia> result = sentences("hammurabi.txt.xml");
 
 julia> result[2]
-5-element Array{Pair{Symbol,String},1}:
- :Attribute => "his accuser"
-   :Deontic => "shall"
-       :aIm => "take"
- :Condition => "If any one bring an accusation against a man , and the accused go to the river and leap into the river , if he sink in the river"
-    :Object => "possession of his house"
+{29, 28} undirected Int64 metagraph with Float64 weights defined by :weight (default weight 1.0)
+
+julia> flat(result[2])
+"If any one ensnare another , putting a ban upon him , but he can not prove it , then he that ensnared him shall be put to death"
+
+julia> flat(result[2], 4)
+"If any one ensnare another , putting a ban upon him"
 ```
 """
-rules(document) = filter(is_rule, parse_sentence.(sentences(document)))
+sentences(file) = map(
+    xml_sentence -> begin
+        words =
+            xml_sentence |>
+            child_elements |>
+            (it -> Filter(
+                node -> name(node) == "dependencies" && attribute(node, "type") == "basic-dependencies",
+                it
+            )) |>
+            first |>
+            child_elements |>
+            collect
+        sentence = MetaDiGraph(DiGraph(length(words) - 1))
+        foreach(
+            word -> begin
+                parent_id = get_id(find_element(word, "governor"))
+                child = find_element(word, "dependent")
+                id = get_id(child)
+                if parent_id != 0
+                    add_edge!(sentence, parent_id, id)
+                end
+                set_props!(sentence, id, Dict(
+                    :relationship => attribute(word, "type"),
+                    :text => content(child)
+                ))
+            end,
+            words
+        )
+        sentence
+    end,
+    file |>
+        parse_file |>
+        root |>
+        (it -> find_element(it, "document")) |>
+        (it -> find_element(it, "sentences")) |>
+        child_elements
+)
+
+flat_inner(sentence, the_vertices) =
+    join(Generator(
+        word_id -> get_prop(sentence, word_id, :text),
+        the_vertices
+    ), " ")
+
+"""
+    flat(sentence)
+
+Just add water
+
+    flat(sentence, id)
+
+Just the parts of the sentence connected to `id`.
+"""
+flat(sentence) = flat_inner(sentence, vertices(sentence))
+flat(sentence, id) = flat_inner(sentence, Filter(
+    word_id -> has_path(sentence, id, word_id),
+    vertices(sentence)
+))
+export flat
+
+"""
+    institutional_grammar
+
+A clause dict based on Elinor Ostrom's institutional grammar.
+"""
+institutional_grammar = Dict(
+    "acl" => :not_applicable, # adjectival clause
+    "advcl" => :Condition,  # adverbial clause modifier
+    "advmod" => :Condition, # adverbial modifier
+    "amod" => :not_applicable, # adjectival modifier
+    "apos" => :not_applicable, # appositional modifier
+    "aux" => :Deontic, # auxiliary
+    # "auxpass" => :aIm, # passive auxiliary
+    "case" => :not_applicable, # case marking
+    "cc" => :remove, # coordinating conjunction
+    "ccomp" => :Object, # clausal component
+    # "compound" -> :aIm,
+    "conjunct" => :recur, # conjunct
+    # "cop" => :aIm, # copula
+    "csubj" => :Attribute, # clausal subject
+    "csubjpass" => :Attribute, # clausal subject passive
+    "dep" => :not_sure, # unspecified dependency
+    "det" => :not_applicable, # determiner
+    "discourse" => :remove,
+    "dislocated" => :not_sure,
+    "dobj" => :Object, # direct object
+    # "expl" => :aIm, # expletive
+    "foreign" => :not_sure, # foreign works
+    # "goeswith" => :aIm, # goes with
+    # "iobj" => :aIm, # indirect object
+    "list" => :recur,
+    "mark" => :not_applicable, # marker
+    # "mwe" => :aIm, # multiword expression
+    "name" => :not_applicable,
+    # "neg" => :aIm, # negation modifier
+    "nmod" => :Condition, # nominal modifier
+    "nsubj" => :Attribute, # nominal subject
+    "nsubjpass" => :Attribute, # nominal subject passive
+    "nummod" => :not_applicable, # numeric modifier
+    "parataxis" => :recur,
+    "punct" => :remove, # punctuation
+    "remnant" => :not_sure, # remnant in ellipisis
+    "reparandum" => :not_sure, # overridden disfluency
+    # root => :aIm,
+    "vocative" => :remove,
+    "xcomp" => :Object, # open clausal component
+)
+export institutional_grammar
+
+seek_clauses!(result, sentence, clause_dict, ::Nothing, rest) = nothing
+function seek_clauses!(result, sentence, clause_dict, root_id, rest)
+    locations = Vector{Pair{Int, Symbol}}()
+    is_rule = false
+    neighbors = copy(outneighbors(sentence, root_id))
+    for clause_id in neighbors
+        clause_type = split(get_prop(sentence, clause_id, :relationship), ':')[1]
+        if haskey(clause_dict, clause_type)
+            clause_category = clause_dict[clause_type]
+            if clause_category == :recur
+                seek_clauses!(result, sentence, clause_dict, clause_id, rest)
+            end
+            if clause_category == :Deontic
+                if occursin(r"(should)|(will)|(shall)|(must)|(may)|(can)", flat(sentence, clause_id))
+                    is_rule = true
+                    rem_edge!(sentence, root_id, clause_id)
+                    push!(locations, clause_id => clause_category)
+                end
+            else
+                rem_edge!(sentence, root_id, clause_id)
+                if clause_category != :remove && clause_category != :recur
+                    push!(locations, clause_id => clause_category)
+                end
+            end
+        end
+    end
+    if is_rule
+        flat(sentence, root_id)
+        push!(locations, root_id => :aIm)
+        push!(result, map(
+            location -> location.second => flat(sentence, location.first),
+            locations
+        ))
+    end
+end
+
+"""
+    rules(file, clause_dict, rest = :rest)
+
+Split the sentences of a `file` into groups of clauses based on `clause_dict`,
+starting at the root. Clause dict should be a map from [Universal Dependencies
+(v1)](http://universaldependencies.org/docsv1/u/dep/all.html) to clause
+categories. There are three reserved clause categories, `:recur`, `:remove`, and
+`rest`.
+
+```jldoctest
+julia> using ParseTrees
+
+julia> result = rules("hammurabi.txt.xml", institutional_grammar, :aIm);
+
+julia> result[237]
+5-element Array{Pair{Symbol,String},1}:
+ :Condition => "If any one hire a cart alone"
+ :Attribute => "he"
+   :Deontic => "shall"
+    :Object => "forty ka of corn per day"
+       :aIm => "pay"
+```
+"""
+function rules(file, clause_dict, rest = :rest)
+    result = Vector{Vector{Pair{Symbol, String}}}()
+    foreach(
+        sentence -> begin
+            root_ids = filter(word_id -> indegree(sentence, word_id) == 0, vertices(sentence))
+            root_id = if length(root_ids) != 1
+                nothing
+            else
+                first(root_ids)
+            end
+            seek_clauses!(result, sentence, clause_dict, root_id, rest)
+        end,
+        sentences(file)
+    )
+    result
+end
+export rules
 
 end
