@@ -9,27 +9,27 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#ParseTrees.clauses-Tuple{Any,Any}",
+    "location": "#ParseTrees.institutional_grammar",
     "page": "ParseTrees.jl",
-    "title": "ParseTrees.clauses",
-    "category": "method",
-    "text": "clauses(dependencies_result, clause_types)\n\nPull out root level clauses that are of clause_types from the result of dependencies.\n\n\n\n\n\n"
+    "title": "ParseTrees.institutional_grammar",
+    "category": "constant",
+    "text": "institutional_grammar\n\nA clause dict based on Elinor Ostrom\'s institutional grammar.\n\n\n\n\n\n"
 },
 
 {
-    "location": "#ParseTrees.dependencies-Tuple{Any}",
+    "location": "#ParseTrees.flat-Tuple{Any}",
     "page": "ParseTrees.jl",
-    "title": "ParseTrees.dependencies",
+    "title": "ParseTrees.flat",
     "category": "method",
-    "text": "dependencies(sentence)\n\nReturn meta-data about each token as well as a tree of how the tokens are connected.\n\n\n\n\n\n"
+    "text": "flat(sentence)\n\nJust add water\n\nflat(sentence, id)\n\nJust the parts of the sentence connected to id.\n\n\n\n\n\n"
 },
 
 {
-    "location": "#ParseTrees.rules-Tuple{Any}",
+    "location": "#ParseTrees.rules",
     "page": "ParseTrees.jl",
     "title": "ParseTrees.rules",
-    "category": "method",
-    "text": "rules(document)\n\nFind the institutional grammar components in a coreNLP result.\n\njulia> using ParseTrees\n\njulia> result = rules(\"hammurabi.txt.xml\");\n\njulia> length(result)\n234\n\njulia> result[2]\n5-element Array{Pair{Symbol,String},1}:\n :Attribute => \"his accuser\"\n   :Deontic => \"shall\"\n       :aIm => \"take\"\n :Condition => \"If any one bring an accusation against a man , and the accused go to the river and leap into the river , if he sink in the river\"\n    :Object => \"possession of his house\"\n\n\n\n\n\n"
+    "category": "function",
+    "text": "rules(file, clause_dict, rest = :rest)\n\nSplit the sentences of a file into groups of clauses based on clause_dict, starting at the root. Clause dict should be a map from Universal Dependencies (v1) to clause categories. There are three reserved clause categories, :recur, :remove, and rest.\n\njulia> using ParseTrees\n\njulia> result = rules(\"hammurabi.txt.xml\", institutional_grammar, :aIm);\n\njulia> result[237]\n5-element Array{Pair{Symbol,String},1}:\n :Condition => \"If any one hire a cart alone\"\n :Attribute => \"he\"\n   :Deontic => \"shall\"\n    :Object => \"forty ka of corn per day\"\n       :aIm => \"pay\"\n\n\n\n\n\n"
 },
 
 {
@@ -37,7 +37,7 @@ var documenterSearchIndex = {"docs": [
     "page": "ParseTrees.jl",
     "title": "ParseTrees.sentences",
     "category": "method",
-    "text": "sentences(file)\n\nReturn an iterator over sentences of an XML coreNLP result.\n\nYou can run coreNLP through the command-line. This package only requires three annontators: tokenize, ssplit, and parse.\n\n\n\n\n\n"
+    "text": "sentences(file)\n\nReturn an iterator over sentences of an XML coreNLP result.\n\nYou can run coreNLP through the command-line. This package only requires three annontators: tokenize, ssplit, and parse.\n\njulia> using ParseTrees\n\njulia> result = sentences(\"hammurabi.txt.xml\");\n\njulia> result[2]\n{29, 28} directed Int64 metagraph with Float64 weights defined by :weight (default weight 1.0)\n\njulia> flat(result[2])\n\"If any one ensnare another , putting a ban upon him , but he can not prove it , then he that ensnared him shall be put to death\"\n\njulia> flat(result[2], 4)\n\"If any one ensnare another , putting a ban upon him\"\n\n\n\n\n\n"
 },
 
 {
