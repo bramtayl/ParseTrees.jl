@@ -95,13 +95,14 @@ export flat
 """
     institutional_grammar
 
-A clause dict based on Elinor Ostrom's institutional grammar. Of the forty
-universal dependencies, many are labelled as `:not_applicable`, meaning they
-will not occur in the root. Several are labelled `:not_sure`, meaning it could
-or could not be one of the 6 components of institutional grammar. Then there
-are the ABDICO components, less `Or else`, which can't be determined
-grammatically, and `aIm`, which will end up as `rest`. Rules inside rules are
-marked for `recur`sion, and superfluous clauses are marked for `remove`l.
+A clause dict based on Elinor Ostrom's [`institutional grammar`](https://www.jstor.org/stable/2082975).
+Of the forty universal dependencies, many are labelled as `:not_applicable`,
+meaning they will not occur in the root. Several are labelled `:not_sure`,
+meaning it could or could not be one of the 6 components of institutional
+grammar. Then there are the ABDICO components, less `Or else`, which can't be
+determined grammatically, and `aIm`, which will end up as `rest`. Rules inside
+rules are marked for `recur`sion, and superfluous clauses are marked for
+`remove`l.
 """
 institutional_grammar = Dict(
     "acl" => :not_applicable, # adjectival clause
