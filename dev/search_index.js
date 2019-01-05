@@ -9,6 +9,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "#ParseTrees.deontic",
+    "page": "ParseTrees.jl",
+    "title": "ParseTrees.deontic",
+    "category": "constant",
+    "text": "const deontic\n\nDefault pattern to recognize deontics.\n\n\n\n\n\n"
+},
+
+{
     "location": "#ParseTrees.institutional_grammar",
     "page": "ParseTrees.jl",
     "title": "ParseTrees.institutional_grammar",
@@ -25,11 +33,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#ParseTrees.rules-Tuple{Any,Any}",
+    "location": "#ParseTrees.rules-Tuple{Any}",
     "page": "ParseTrees.jl",
     "title": "ParseTrees.rules",
     "category": "method",
-    "text": "rules(file, clause_dict; rest = :rest)\n\nSplit the sentences of a file into groups of clauses based on clause_dict, starting at the root. Clause dict should be a map from Universal Dependencies (v1) to clause categories. There are three reserved clause categories, :recur (which will look for a rule inside the rule), :remove, (which will ignore the clause), and rest (which will gobble up any uncategorized root-level clauses).\n\njulia> using ParseTrees\n\njulia> result = rules(\"hammurabi.txt.xml\", institutional_grammar; rest = :aIm);\n\njulia> result[237]\n5-element Array{Pair{Symbol,String},1}:\n :Condition => \"If any one hire a cart alone\"\n :Attribute => \"he\"\n   :Deontic => \"shall\"\n    :oBject => \"forty ka of corn per day\"\n       :aIm => \"pay\"\n\n\n\n\n\n"
+    "text": "rules(file; dictionary = institutional_grammar, deontic = deontic, rest = :rest)\n\nSplit the sentences of a file into groups of clauses based on dictionary, starting at the root. Clause dict should be a map from Universal Dependencies (v1) to clause categories. Rules will be identified if they contain both a clause in the :Deontic category and also matching the deontic pattern. There are three additional reserved clause categories, :recur (which will look for a rule inside the rule), :remove, (which will ignore the clause), and rest (which will gobble up any uncategorized root-level clauses).\n\njulia> using ParseTrees\n\njulia> result = rules(\"hammurabi.txt.xml\");\n\njulia> result[237]\n5-element Array{Pair{Symbol,String},1}:\n :Condition => \"If any one hire a cart alone\"\n :Attribute => \"he\"\n   :Deontic => \"shall\"\n    :oBject => \"forty ka of corn per day\"\n       :aIm => \"pay\"\n\n\n\n\n\n"
 },
 
 {
