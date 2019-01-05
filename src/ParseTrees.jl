@@ -93,6 +93,14 @@ flat(sentence, id) = flat_inner(sentence, Filter(
 export flat
 
 """
+    const deontic
+
+Default pattern to recognize `deontic`s.
+"""
+const deontic = r"(should)|(will)|(shall)|(must)|(may)|(can)"
+export deontic
+
+"""
     institutional_grammar
 
 A clause dict based on Elinor Ostrom's [`institutional grammar`](https://www.jstor.org/stable/2082975).
@@ -148,20 +156,20 @@ institutional_grammar = Dict(
 )
 export institutional_grammar
 
-seek_clauses!(result, sentence, clause_dict, ::Nothing, rest) = nothing
-function seek_clauses!(result, sentence, clause_dict, root_id, rest)
+seek_clauses!(result, sentence, dictionary, ::Nothing, rest, deontic) = nothing
+function seek_clauses!(result, sentence, dictionary, root_id, rest, deontic)
     locations = Vector{Pair{Int, Symbol}}()
     is_rule = false
     neighbors = copy(outneighbors(sentence, root_id))
     for clause_id in neighbors
         clause_type = split(get_prop(sentence, clause_id, :relationship), ':')[1]
-        if haskey(clause_dict, clause_type)
-            clause_category = clause_dict[clause_type]
+        if haskey(dictionary, clause_type)
+            clause_category = dictionary[clause_type]
             if clause_category == :recur
-                seek_clauses!(result, sentence, clause_dict, clause_id, rest)
+                seek_clauses!(result, sentence, dictionary, clause_id, rest, deontic)
             end
             if clause_category == :Deontic
-                if occursin(r"(should)|(will)|(shall)|(must)|(may)|(can)", flat(sentence, clause_id))
+                if occursin(deontic, flat(sentence, clause_id))
                     is_rule = true
                     rem_edge!(sentence, root_id, clause_id)
                     push!(locations, clause_id => clause_category)
@@ -184,19 +192,21 @@ function seek_clauses!(result, sentence, clause_dict, root_id, rest)
 end
 
 """
-    rules(file, clause_dict; rest = :rest)
+    rules(file; dictionary = institutional_grammar, deontic = deontic, rest = :rest)
 
-Split the sentences of a `file` into groups of clauses based on `clause_dict`,
+Split the sentences of a `file` into groups of clauses based on `dictionary`,
 starting at the root. Clause dict should be a map from [Universal Dependencies
 (v1)](http://universaldependencies.org/docsv1/u/dep/all.html) to clause
-categories. There are three reserved clause categories, `:recur` (which will
-look for a rule inside the rule), `:remove`, (which will ignore the clause), and
-`rest` (which will gobble up any uncategorized root-level clauses).
+categories. Rules will be identified if they contain both a clause in the
+`:Deontic` category and also matching the `deontic` pattern. There are three
+additional reserved clause categories, `:recur` (which will look for a rule
+inside the rule), `:remove`, (which will ignore the clause), and `rest` (which
+will gobble up any uncategorized root-level clauses).
 
 ```jldoctest
 julia> using ParseTrees
 
-julia> result = rules("hammurabi.txt.xml", institutional_grammar; rest = :aIm);
+julia> result = rules("hammurabi.txt.xml");
 
 julia> result[237]
 5-element Array{Pair{Symbol,String},1}:
@@ -207,17 +217,14 @@ julia> result[237]
        :aIm => "pay"
 ```
 """
-function rules(file, clause_dict; rest = :rest)
+function rules(file; dictionary = institutional_grammar, deontic = deontic, rest = :aIm)
     result = Vector{Vector{Pair{Symbol, String}}}()
     foreach(
         sentence -> begin
             root_ids = filter(word_id -> indegree(sentence, word_id) == 0, vertices(sentence))
-            root_id = if length(root_ids) != 1
-                nothing
-            else
-                first(root_ids)
+            if length(root_ids) >= 1
+                seek_clauses!(result, sentence, dictionary, first(root_ids), rest, deontic)
             end
-            seek_clauses!(result, sentence, clause_dict, root_id, rest)
         end,
         sentences(file)
     )
