@@ -101,7 +101,7 @@ const deontic = r"(should)|(will)|(shall)|(must)|(may)|(can)"
 export deontic
 
 """
-    institutional_grammar
+    dictionary
 
 A clause dict based on Elinor Ostrom's [`institutional grammar`](https://www.jstor.org/stable/2082975).
 Of the forty universal dependencies, many are labelled as `:not_applicable`,
@@ -112,7 +112,7 @@ determined grammatically, and `aIm`, which will end up as `rest`. Rules inside
 rules are marked for `recur`sion, and superfluous clauses are marked for
 `remove`l.
 """
-institutional_grammar = Dict(
+dictionary = Dict(
     "acl" => :not_applicable, # adjectival clause
     "advcl" => :Condition,  # adverbial clause modifier
     "advmod" => :Condition, # adverbial modifier
@@ -154,7 +154,7 @@ institutional_grammar = Dict(
     "vocative" => :remove,
     "xcomp" => :oBject, # open clausal component
 )
-export institutional_grammar
+export dictionary
 
 seek_clauses!(result, sentence, dictionary, ::Nothing, rest, deontic) = nothing
 function seek_clauses!(result, sentence, dictionary, root_id, rest, deontic)
@@ -192,7 +192,7 @@ function seek_clauses!(result, sentence, dictionary, root_id, rest, deontic)
 end
 
 """
-    rules(file; dictionary = institutional_grammar, deontic = deontic, rest = :rest)
+    rules(file; dictionary = dictionary, deontic = deontic, rest = :aIm)
 
 Split the sentences of a `file` into groups of clauses based on `dictionary`,
 starting at the root. Clause dict should be a map from [Universal Dependencies
@@ -217,7 +217,7 @@ julia> result[237]
        :aIm => "pay"
 ```
 """
-function rules(file; dictionary = institutional_grammar, deontic = deontic, rest = :aIm)
+function rules(file; dictionary = dictionary, deontic = deontic, rest = :aIm)
     result = Vector{Vector{Pair{Symbol, String}}}()
     foreach(
         sentence -> begin
