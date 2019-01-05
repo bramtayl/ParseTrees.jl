@@ -20,15 +20,13 @@ annotator.
 ```jldoctest
 julia> using ParseTrees
 
-julia> sentences = sentences("hammurabi.txt.xml");
-
-julia> sentences[2]
+julia> sentence = sentences("hammurabi.txt.xml")[2]
 {29, 28} directed Int64 metagraph with Float64 weights defined by :weight (default weight 1.0)
 
-julia> flat(sentences[2])
+julia> flat(sentence)
 "If any one ensnare another , putting a ban upon him , but he can not prove it , then he that ensnared him shall be put to death"
 
-julia> flat(sentences[2], 4)
+julia> flat(sentence, 4)
 "If any one ensnare another , putting a ban upon him"
 ```
 """
