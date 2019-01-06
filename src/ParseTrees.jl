@@ -42,14 +42,14 @@ sentences(file) = map(
         foreach(
             word -> begin
                 governor = idx(find_element(word, "governor"))
-                dependent_clause = find_element(word, "dependent")
-                dependent = idx(dependent_clause)
+                dependent_word = find_element(word, "dependent")
+                dependent = idx(dependent_word)
                 if governor != 0
                     add_edge!(sentence, governor, dependent)
                 end
                 set_props!(sentence, dependent, Dict(
                     :type => attribute(word, "type"),
-                    :content => content(dependent_clause)
+                    :content => content(dependent_word)
                 ))
             end,
             words
